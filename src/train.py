@@ -27,8 +27,8 @@ def train_model(model, train_loader, val_loader, device,
     """
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=15, gamma=0.3)
-
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    optimizer, T_max=epochs, eta_min=1e-6)
     history = {
         'train_loss': [], 'val_loss': [],
         'train_acc':  [], 'val_acc':  []
