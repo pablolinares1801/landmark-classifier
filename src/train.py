@@ -7,27 +7,13 @@ import os
 
 def train_model(model, train_loader, val_loader, device,
                 epochs=30, lr=0.001, save_path='models/best_cnn_scratch.pt'):
-    """
-    Loop de entrenamiento completo con:
-        - Registro de loss y accuracy por época (train y val)
-        - Guardado del mejor modelo (menor val_loss)
-        - Retorna historial para graficar curvas
 
-    Args:
-        model       : modelo CNN a entrenar
-        train_loader: DataLoader de entrenamiento
-        val_loader  : DataLoader de validación
-        device      : 'cuda' o 'cpu'
-        epochs      : número de épocas
-        lr          : learning rate inicial
-        save_path   : ruta donde guardar el mejor modelo
-
-    Returns:
-        history: dict con listas de loss y accuracy de train y val
-    """
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(),lr=0.0005,weight_decay=1e-4)
-    scheduler = ReduceLROnPlateau(optimizer,mode='min',factor=0.5,patience=3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=epochs, eta_min=1e-6
+    )
+
     history = {
         'train_loss': [], 'val_loss': [],
         'train_acc':  [], 'val_acc':  []
@@ -40,7 +26,7 @@ def train_model(model, train_loader, val_loader, device,
 
     for epoch in range(1, epochs + 1):
 
-        # ── ENTRENAMIENTO ──────────────────────────
+        # ── ENTRENAMIENTO
         model.train()
         train_loss, train_correct, train_total = 0.0, 0, 0
 
@@ -60,7 +46,7 @@ def train_model(model, train_loader, val_loader, device,
 
         scheduler.step()
 
-        # ── VALIDACIÓN ────────────────────────────
+        # ── VALIDACIÓN
         model.eval()
         val_loss, val_correct, val_total = 0.0, 0, 0
 
@@ -75,7 +61,7 @@ def train_model(model, train_loader, val_loader, device,
                 val_correct += (preds == labels).sum().item()
                 val_total   += labels.size(0)
 
-        # ── MÉTRICAS ──────────────────────────────
+        # ── MÉTRICAS
         epoch_train_loss = train_loss / train_total
         epoch_val_loss   = val_loss   / val_total
         epoch_train_acc  = train_correct / train_total * 100
@@ -97,19 +83,16 @@ def train_model(model, train_loader, val_loader, device,
               f"| Val Loss: {epoch_val_loss:.4f}  Acc: {epoch_val_acc:.1f}%"
               + (" ✓ mejor modelo" if epoch_val_loss == best_val_loss else ""))
 
-    # Restaurar mejores pesos
     model.load_state_dict(best_weights)
     print(f"\nEntrenamiento finalizado. Mejor val_loss: {best_val_loss:.4f}")
     return history
 
 
 def plot_training_curves(history):
-    """Grafica curvas de loss y accuracy (train vs val)."""
     epochs = range(1, len(history['train_loss']) + 1)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-    # Loss
     ax1.plot(epochs, history['train_loss'], 'b-o', markersize=3, label='Train Loss')
     ax1.plot(epochs, history['val_loss'],   'r-o', markersize=3, label='Val Loss')
     ax1.set_title('Curva de Pérdida')
@@ -118,7 +101,6 @@ def plot_training_curves(history):
     ax1.legend()
     ax1.grid(True, alpha=0.3)
 
-    # Accuracy
     ax2.plot(epochs, history['train_acc'], 'b-o', markersize=3, label='Train Acc')
     ax2.plot(epochs, history['val_acc'],   'r-o', markersize=3, label='Val Acc')
     ax2.set_title('Curva de Accuracy')
@@ -133,7 +115,6 @@ def plot_training_curves(history):
 
 
 def evaluate_model(model, test_loader, device):
-    """Evalúa el modelo en el conjunto de test y retorna el accuracy."""
     model.eval()
     correct, total = 0, 0
 
