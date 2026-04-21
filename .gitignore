@@ -1,0 +1,7 @@
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Modelos grandes (opcional, comentar si quieres subirlos)
+# models/*.pt
