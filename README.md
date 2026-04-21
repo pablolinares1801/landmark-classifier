@@ -104,5 +104,5 @@ Universidad Católica Boliviana
 
 ## Licencia
 
-Proyecto académico — uso educativo.
+Proyecto académico — uso educativo
 
