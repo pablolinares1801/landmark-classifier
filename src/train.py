@@ -129,3 +129,87 @@ def evaluate_model(model, test_loader, device):
     accuracy = correct / total * 100
     print(f"Test Accuracy: {accuracy:.2f}%")
     return accuracy
+
+def train_transfer_model(model, train_loader, val_loader, device,
+                epochs=15, lr=0.001,
+                save_path='models/best_transfer.pt'):
+    """
+    Loop de entrenamiento para Transfer Learning.
+    Igual al anterior pero con lr más alto porque solo
+    entrenamos la capa final, no toda la red.
+    """
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=lr, weight_decay=1e-4
+    )
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=epochs, eta_min=1e-6
+    )
+
+    history = {
+        'train_loss': [], 'val_loss': [],
+        'train_acc':  [], 'val_acc':  []
+    }
+
+    best_val_loss = float('inf')
+    best_weights  = copy.deepcopy(model.state_dict())
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    for epoch in range(1, epochs + 1):
+
+        model.train()
+        train_loss, train_correct, train_total = 0.0, 0, 0
+
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+            train_loss    += loss.item() * images.size(0)
+            preds          = outputs.argmax(dim=1)
+            train_correct += (preds == labels).sum().item()
+            train_total   += labels.size(0)
+
+        scheduler.step()
+
+        model.eval()
+        val_loss, val_correct, val_total = 0.0, 0, 0
+
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images)
+                loss    = criterion(outputs, labels)
+                val_loss    += loss.item() * images.size(0)
+                preds        = outputs.argmax(dim=1)
+                val_correct += (preds == labels).sum().item()
+                val_total   += labels.size(0)
+
+        epoch_train_loss = train_loss / train_total
+        epoch_val_loss   = val_loss   / val_total
+        epoch_train_acc  = train_correct / train_total * 100
+        epoch_val_acc    = val_correct   / val_total   * 100
+
+        history['train_loss'].append(epoch_train_loss)
+        history['val_loss'].append(epoch_val_loss)
+        history['train_acc'].append(epoch_train_acc)
+        history['val_acc'].append(epoch_val_acc)
+
+        if epoch_val_loss < best_val_loss:
+            best_val_loss = epoch_val_loss
+            best_weights  = copy.deepcopy(model.state_dict())
+            torch.save(best_weights, save_path)
+
+        print(f"Época [{epoch:02d}/{epochs}] "
+              f"| Train Loss: {epoch_train_loss:.4f}  Acc: {epoch_train_acc:.1f}% "
+              f"| Val Loss: {epoch_val_loss:.4f}  Acc: {epoch_val_acc:.1f}%"
+              + (" ✓ mejor modelo" if epoch_val_loss == best_val_loss else ""))
+
+    model.load_state_dict(best_weights)
+    print(f"\nEntrenamiento finalizado. Mejor val_loss: {best_val_loss:.4f}")
+    return history
