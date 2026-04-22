@@ -95,7 +95,7 @@ pip install matplotlib numpy jupyter pillow
 
 ## Video Explicativo
 
-[Enlace al video en YouTube](#) (pendiente de carga)
+[https://youtu.be/JVw9gyC1yOc](https://youtu.be/JVw9gyC1yOc)
 
 ## Autor
 
